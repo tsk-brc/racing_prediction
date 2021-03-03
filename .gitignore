@@ -7,3 +7,6 @@ csv/*
 # 処理結果を格納するログファイル
 log/*
 !.gitkeep
+
+# seleniumのログファイル
+geckodriver.log
