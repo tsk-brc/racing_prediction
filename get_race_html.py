@@ -72,8 +72,8 @@ def get_race_html_by_year_and_month(year, month):
                     response.encoding = response.apparent_encoding
                     # レスポンスをテキスト形式で取得
                     html = response.text
-                    # 1秒待機
-                    time.sleep(1)
+                    # 5秒待機
+                    time.sleep(5)
                     # HTMLを保存
                     with open(save_file_path, 'w') as file:
                         file.write(html)

@@ -120,8 +120,8 @@ def get_race_url_by_year_and_month(driver, year, month):
     # フォームを送信
     form = driver.find_element_by_css_selector("#db_search_detail_form > form")
     form.submit()
-    # 1秒待機
-    time.sleep(1)
+    # 5秒待機
+    time.sleep(5)
     # ページ上のすべての要素が読み込まれるまで10秒待機
     wait.until(EC.presence_of_all_elements_located)
     # 件数に該当するフォームの要素を取得
@@ -145,8 +145,8 @@ def get_race_url_by_year_and_month(driver, year, month):
             total_file_rows = 0
             # エラーが出るまで無限ループ
             while True:
-                # 1秒待機
-                time.sleep(1)
+                # 5秒待機
+                time.sleep(5)
                 # ページ上のすべての要素が読み込まれるまで10秒待機
                 wait.until(EC.presence_of_all_elements_located)
                 # bodyのtrタグの要素数を取得
