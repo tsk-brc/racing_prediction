@@ -10,3 +10,5 @@ log/*
 
 # seleniumのログファイル
 geckodriver.log
+
+.DS_Store
