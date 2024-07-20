@@ -42,6 +42,8 @@ def get_race_url():
     options = Options()
     # ヘッドレスモードを有効にする
     options.headless = True
+    # Firefoxのバイナリパスを指定する
+    options.binary_location = '/Applications/Firefox.app/Contents/MacOS/firefox'
     # WebDriverを起動する
     driver = webdriver.Firefox(firefox_options=options)
     # ドライバが設定されるまでの待機時間(秒)
