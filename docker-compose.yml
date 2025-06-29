@@ -1,0 +1,11 @@
+version: "3.8"
+services:
+  racing:
+    build: .
+    volumes:
+      - ./url:/app/url
+      - ./log:/app/log
+      - ./csv:/app/csv
+      - ./html:/app/html
+    environment:
+      - TZ=Asia/Tokyo
