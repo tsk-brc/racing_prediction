@@ -6,8 +6,8 @@ https://db.netkeiba.com/
 にあるJRAのレースのURLを取得する
 """
 from selenium.webdriver.support.ui import Select, WebDriverWait
-import chromedriver_binary
 from selenium.webdriver.firefox.options import Options
+from selenium.webdriver.firefox.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium import webdriver
@@ -38,47 +38,77 @@ FROM_YEAR = config.getint('CONST', 'FROM_YEAR')
 
 
 def get_race_url():
-    # FireFox Optionsの設定
+    # Firefox Optionsの設定
     options = Options()
     # ヘッドレスモードを有効にする
-    options.headless = True
-    # Firefoxのバイナリパスを指定する
-    options.binary_location = '/Applications/Firefox.app/Contents/MacOS/firefox'
-    # WebDriverを起動する
-    driver = webdriver.Firefox(firefox_options=options)
-    # ドライバが設定されるまでの待機時間(秒)
-    driver.implicitly_wait(10)
-    # 昨年までのデータを取得
-    for year in range(FROM_YEAR, now_datetime.year):
-        for month in range(1, 13):
-            # URL一覧を記載するファイル名(yyyymm.txt)
-            race_url_file = RACE_URL_DIR + \
-                str(year) + str('{0:02d}'.format(month)) + ".txt"
-            # ファイルが存在しなければ取得
-            if not os.path.isfile(race_url_file):
-                logger.info(
-                    str(year) + "年" + str('{0:02d}'.format(month)) + "月のURL情報を取得します")
-                get_race_url_by_year_and_month(driver, year, month)
-    # 今年の開始から先月までのデータを取得
-    for year in range(now_datetime.year, now_datetime.year + 1):
-        for month in range(1, now_datetime.month):
-            # URL一覧を記載するファイル名(yyyymm.txt)
-            race_url_file = RACE_URL_DIR + \
-                str(year) + str('{0:02d}'.format(month)) + ".txt"
-            # ファイルが存在しなければ取得
-            if not os.path.isfile(race_url_file):
-                logger.info(
-                    str(year) + "年" + str('{0:02d}'.format(month)) + "月のURL情報を取得します")
-                get_race_url_by_year_and_month(driver, year, month)
-    # 今月のデータを取得
-    logger.info(str(now_datetime.year) +
-                "年" + str('{0:02d}'.format(now_datetime.month)) + "月のURL情報を取得します")
-    get_race_url_by_year_and_month(
-        driver, now_datetime.year, now_datetime.month)
-
-    # Chrome Driverを終了する
-    driver.close()
-    driver.quit()
+    options.add_argument('-headless')
+    # ログレベルを設定
+    options.set_preference("dom.webdriver.enabled", False)
+    options.set_preference('useAutomationExtension', False)
+    
+    # Firefoxのバイナリパスを設定（macOSの場合）
+    firefox_binary_paths = [
+        '/Applications/Firefox.app/Contents/MacOS/firefox',
+        '/usr/bin/firefox',
+        '/usr/local/bin/firefox',
+    ]
+    for firefox_path in firefox_binary_paths:
+        if os.path.exists(firefox_path):
+            options.binary_location = firefox_path
+            logger.info(f"Firefoxのパスを設定: {firefox_path}")
+            break
+    
+    # geckodriverサービスの設定
+    service = Service(log_output=os.path.join(os.getcwd(), 'geckodriver.log'))
+    
+    try:
+        # WebDriverを起動する
+        driver = webdriver.Firefox(options=options, service=service)
+        # ドライバが設定されるまでの待機時間(秒)
+        driver.implicitly_wait(10)
+    except Exception as e:
+        logger.error(f"Firefox WebDriverの起動に失敗しました: {str(e)}")
+        logger.error(f"geckodriver.logを確認してください: {os.path.join(os.getcwd(), 'geckodriver.log')}")
+        raise
+    
+    try:
+        # 昨年までのデータを取得
+        for year in range(FROM_YEAR, now_datetime.year):
+            for month in range(1, 13):
+                # URL一覧を記載するファイル名(yyyymm.txt)
+                race_url_file = RACE_URL_DIR + \
+                    str(year) + str('{0:02d}'.format(month)) + ".txt"
+                # ファイルが存在しなければ取得
+                if not os.path.isfile(race_url_file):
+                    logger.info(
+                        str(year) + "年" + str('{0:02d}'.format(month)) + "月のURL情報を取得します")
+                    get_race_url_by_year_and_month(driver, year, month)
+        # 今年の開始から先月までのデータを取得
+        for year in range(now_datetime.year, now_datetime.year + 1):
+            for month in range(1, now_datetime.month):
+                # URL一覧を記載するファイル名(yyyymm.txt)
+                race_url_file = RACE_URL_DIR + \
+                    str(year) + str('{0:02d}'.format(month)) + ".txt"
+                # ファイルが存在しなければ取得
+                if not os.path.isfile(race_url_file):
+                    logger.info(
+                        str(year) + "年" + str('{0:02d}'.format(month)) + "月のURL情報を取得します")
+                    get_race_url_by_year_and_month(driver, year, month)
+        # 今月のデータを取得
+        logger.info(str(now_datetime.year) +
+                    "年" + str('{0:02d}'.format(now_datetime.month)) + "月のURL情報を取得します")
+        get_race_url_by_year_and_month(
+            driver, now_datetime.year, now_datetime.month)
+    except Exception as e:
+        logger.error(f"URL取得処理中にエラーが発生しました: {str(e)}")
+        raise
+    finally:
+        # Firefox Driverを終了する
+        try:
+            driver.close()
+            driver.quit()
+        except:
+            pass
 
 
 def get_race_url_by_year_and_month(driver, year, month):
@@ -95,43 +125,46 @@ def get_race_url_by_year_and_month(driver, year, month):
     wait.until(EC.presence_of_all_elements_located)
 
     # 期間を選択
-    start_year_element = driver.find_element_by_name('start_year')
+    start_year_element = driver.find_element(By.NAME, 'start_year')
     start_year_select = Select(start_year_element)
     start_year_select.select_by_value(str(year))
-    start_mon_element = driver.find_element_by_name('start_mon')
+    start_mon_element = driver.find_element(By.NAME, 'start_mon')
     start_mon_select = Select(start_mon_element)
     start_mon_select.select_by_value(str(month))
-    end_year_element = driver.find_element_by_name('end_year')
+    end_year_element = driver.find_element(By.NAME, 'end_year')
     end_year_select = Select(end_year_element)
     end_year_select.select_by_value(str(year))
-    end_mon_element = driver.find_element_by_name('end_mon')
+    end_mon_element = driver.find_element(By.NAME, 'end_mon')
     end_mon_select = Select(end_mon_element)
     end_mon_select.select_by_value(str(month))
 
     # JRAの競馬場を全てチェック
     for i in range(1, 11):
-        terms = driver.find_element_by_id('check_Jyo_' + str(i).zfill(2))
+        terms = driver.find_element(By.ID, 'check_Jyo_' + str(i).zfill(2))
         terms.click()
 
     # 表示件数「100」を選択
-    # list_element = driver.find_element_by_name(
+    # list_element = driver.find_element(By.NAME,
     #    "list").location_once_scrolled_into_view
     #list_number = Select(list_element)
     # list_number.select_by_value('100')
 
     # フォームを送信
-    form = driver.find_element_by_css_selector("#db_search_detail_form > form")
+    form = driver.find_element(By.CSS_SELECTOR, "#db_search_detail_form > form")
     form.submit()
     # 5秒待機
     time.sleep(5)
     # ページ上のすべての要素が読み込まれるまで10秒待機
     wait.until(EC.presence_of_all_elements_located)
     # 件数に該当するフォームの要素を取得
-    total_num_and_now_num = driver.find_element_by_xpath(
+    total_num_and_now_num = driver.find_element(By.XPATH,
         "//*[@id='contents_liquid']/div[1]/div[2]").text
     # 件数を取得
-    total_num = int(
-        re.search(r'(.*)件中', total_num_and_now_num).group().strip("件中"))
+    match = re.search(r'(.*)件中', total_num_and_now_num)
+    if match is None:
+        logger.error("件数の取得に失敗しました: " + total_num_and_now_num)
+        return
+    total_num = int(match.group().strip("件中"))
     # 既に取得済みの件数
     pre_url_num = 0
     # ファイルが存在すればファイルを開く
@@ -152,18 +185,18 @@ def get_race_url_by_year_and_month(driver, year, month):
                 # ページ上のすべての要素が読み込まれるまで10秒待機
                 wait.until(EC.presence_of_all_elements_located)
                 # bodyのtrタグの要素数を取得
-                table_rows = driver.find_element_by_class_name(
-                    'race_table_01').find_elements_by_tag_name("tr")
+                table_rows = driver.find_element(By.CLASS_NAME,
+                    'race_table_01').find_elements(By.TAG_NAME, "tr")
                 total_file_rows += len(table_rows) - 1
                 # 行数分ループ
                 for row in range(1, len(table_rows)):
                     # レース情報のリンクを取得し、ファイルに書き出し
-                    race_link = table_rows[row].find_elements_by_tag_name(
-                        "td")[4].find_element_by_tag_name("a").get_attribute("href")
+                    race_link = table_rows[row].find_elements(By.TAG_NAME,
+                        "td")[4].find_element(By.TAG_NAME, "a").get_attribute("href")
                     f.write(race_link + "\n")
                 try:
                     # ページを次に送る
-                    target = driver.find_elements_by_link_text("次")[0]
+                    target = driver.find_elements(By.LINK_TEXT, "次")[0]
                     # javascriptで強制的にクリック処理
                     driver.execute_script("arguments[0].click();", target)
                 # エラーをキャッチしたらループを抜ける
