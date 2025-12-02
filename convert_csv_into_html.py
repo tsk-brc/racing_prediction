@@ -170,11 +170,18 @@ def convert_csv_into_html_by_year(year):
                             race_id, html)
                         for horse_list in horse_list_list:
                             horse_se = pd.Series(
-                                horse_list, index=horse_df.columns)
-                            horse_df = horse_df.append(
-                                horse_se, ignore_index=True)
+                                horse_list, index=horse_df.columns
+                            )
+                            # pandas 2.x では DataFrame.append は削除されたため、pd.concat を使用
+                            horse_df = pd.concat(
+                                [horse_df, horse_se.to_frame().T],
+                                ignore_index=True,
+                            )
                         race_se = pd.Series(race_list, index=race_df.columns)
-                        race_df = race_df.append(race_se, ignore_index=True)
+                        race_df = pd.concat(
+                            [race_df, race_se.to_frame().T],
+                            ignore_index=True,
+                        )
         # ヘッダーありインデックスなしでCSVを保存
         race_df.to_csv(race_data_csv, header=True, index=False)
         horse_df.to_csv(horse_data_csv, header=True, index=False)
