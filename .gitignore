@@ -1,6 +1,8 @@
 # 処理に使用する中間ファイル
 url/*
 html/*
+html_keibalab/*
+html_kyotei/*
 csv/*
 !.gitkeep
 
