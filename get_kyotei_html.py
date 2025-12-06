@@ -119,7 +119,7 @@ def get_kyotei_html_by_date_with_selenium(driver, year, month, day, place_no, ra
         start_from_tab: 開始するタブ名（例: "枠別情報"）。Noneの場合はすべてのタブを処理
 
     Returns:
-        bool: 成功した場合True、失敗した場合False
+        bool or None: 成功した場合True、データなしの場合None、エラーの場合False
     """
     # 日付をyyyymmdd形式に変換
     date_str = f"{year}{month:02d}{day:02d}"
@@ -255,7 +255,7 @@ def get_kyotei_html_by_date_with_selenium(driver, year, month, day, place_no, ra
             page_text = driver.find_element(By.TAG_NAME, "body").text
             if "データはありません。" in page_text:
                 logger.warning(f"データなしのためスキップ: {url}")
-                return False
+                return None  # データなしは正常なスキップなのでNoneを返す
         except Exception as e:
             logger.debug(f"データチェックでエラー: {str(e)}")
             pass
@@ -459,6 +459,7 @@ def get_kyotei_html_by_date_with_selenium(driver, year, month, day, place_no, ra
                     # 「データはありません。」が実際に表示されるテキストに含まれている場合、スキップ
                     if "データはありません。" in visible_text:
                         logger.warning(f"データなしのためスキップ: {tab_url} ({tab_name})")
+                        # データなしの場合は、このタブの処理をスキップして次のタブへ
                         continue
 
                     # HTMLを保存
@@ -522,7 +523,7 @@ def get_kyotei_html_by_date_with_selenium(driver, year, month, day, place_no, ra
                 # 「データはありません。」が実際に表示されるテキストに含まれている場合、スキップ
                 if "データはありません。" in visible_text:
                     logger.debug(f"データなしのためスキップ: {url}")
-                    return False
+                    return None  # データなしは正常なスキップなのでNoneを返す
 
                 # HTMLを保存
                 with open(save_file_path, "w", encoding="utf-8") as file:
@@ -577,16 +578,22 @@ def get_kyotei_html_by_date_and_place_no(driver, year, month, day, place_no):
     for race_no in range(RACE_NO_MIN, RACE_NO_MAX + 1):
         for slider in SLIDER_VALUES:
             try:
-                if get_kyotei_html_by_date(driver, year, month, day, place_no, race_no, slider):
+                result = get_kyotei_html_by_date(driver, year, month, day, place_no, race_no, slider)
+                if result is True:
+                    # 成功した場合
                     success_count += 1
                     consecutive_errors = 0  # 成功したらエラーカウントをリセット
+                elif result is None:
+                    # データなしの場合（正常なスキップ）はエラーカウントに含めない
+                    consecutive_errors = 0  # データなしは正常なのでエラーカウントをリセット
                 else:
+                    # エラーの場合（False）
                     consecutive_errors += 1
             except Exception as e:
                 consecutive_errors += 1
                 logger.error(f"レース取得エラー (place_no={place_no}, race_no={race_no}): {str(e)}")
             
-            # 連続エラーが発生した場合、長時間待機
+            # 連続エラーが発生した場合、長時間待機（データなしの場合は待機しない）
             if consecutive_errors >= MAX_CONSECUTIVE_ERRORS:
                 logger.warning(f"連続{consecutive_errors}回エラーが発生しました。IP制限の可能性があるため、{IP_BLOCK_WAIT_TIME}秒待機します...")
                 time.sleep(IP_BLOCK_WAIT_TIME)
