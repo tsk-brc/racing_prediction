@@ -641,6 +641,37 @@ def get_kyotei_html_by_date_all_place_nos(driver, year, month, day):
             time.sleep(BASE_WAIT_TIME * 2)  # place_no間は少し長めに待機
 
 
+def get_kyotei_html_by_year_and_month_and_place_no(driver, year, month, place_no):
+    """
+    指定した年月とplace_noの全レースのHTMLを取得する
+
+    Args:
+        driver: WebDriverインスタンス
+        year: 年
+        month: 月
+        place_no: 競艇場ID (1-24)
+    """
+    logger.info(f"{year}年{month:02d}月 place_no={place_no} のHTMLを取得します")
+
+    # 月の日数を取得
+    if month == 12:
+        days_in_month = 31
+    else:
+        next_month = datetime.date(year, month + 1, 1)
+        days_in_month = (next_month - datetime.timedelta(days=1)).day
+
+    for day in range(1, days_in_month + 1):
+        # 日付の妥当性を確認
+        try:
+            date_obj = datetime.date(year, month, day)
+            # 過去の日付のみ処理（今日以降はスキップ）
+            if date_obj <= now_datetime.date():
+                get_kyotei_html_by_date_and_place_no(driver, year, month, day, place_no)
+        except ValueError:
+            # 無効な日付（例: 2月30日）はスキップ
+            continue
+
+
 def get_kyotei_html_by_year_and_month(driver, year, month):
     """
     指定した年月の全レースのHTMLを取得する
@@ -786,6 +817,9 @@ if __name__ == "__main__":
             elif args.year and args.month and args.day:
                 # 特定の日付の全place_noの全レースを取得
                 get_kyotei_html_by_date_all_place_nos(driver, args.year, args.month, args.day)
+            elif args.year and args.month and args.place_no:
+                # 特定の年月、place_noの全レースを取得
+                get_kyotei_html_by_year_and_month_and_place_no(driver, args.year, args.month, args.place_no)
             elif args.year and args.month:
                 # 特定の年月の全レースを取得
                 get_kyotei_html_by_year_and_month(driver, args.year, args.month)
